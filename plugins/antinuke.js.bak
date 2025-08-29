@@ -1,0 +1,50 @@
+// antinuke.js
+export async function onGroupUpdate(update, conn, db) {
+    const m = update;
+
+    // Controllo se la funzione antinuke è attiva per questa chat
+    let chat = db.data.chats[m.chat];
+    if (!chat?.antinuke) return;
+
+    const chatId = m.chat;
+    const botNumber = global.botnumber + '@s.whatsapp.net';
+    const ownersBot = global.owner.map(o => o[0] + '@s.whatsapp.net');
+
+    if (!m.participants) return;
+
+    const action = m.action; // 'promote' o 'demote'
+    const executor = m.actor;
+
+    for (let participant of m.participants) {
+        // Ignora bot stesso
+        if (participant === botNumber || executor === botNumber) continue;
+
+        // Ignora se chi fa l'azione è owner
+        if (ownersBot.includes(executor)) continue;
+
+        // Se la modifica riguarda un Owner, ripristina subito
+        if (ownersBot.includes(participant)) {
+            if (action === 'demote') {
+                await conn.groupParticipantsUpdate(chatId, [participant], 'promote');
+            }
+            continue;
+        }
+
+        // Anti-nuke: ripristina e manda alert
+        const correctAction = action === 'promote' ? 'demote' : 'promote';
+        await conn.groupParticipantsUpdate(chatId, [participant], correctAction);
+
+        // Ottieni nome di chi ha eseguito l'azione
+        let executorName;
+        try {
+            executorName = await conn.getName(executor);
+        } catch {
+            executorName = executor;
+        }
+
+        const txt = `🛡️ ANTINUKE ATTIVO!
+${executorName} (${executor}) ha provato a modificare gli admin senza permessi!`;
+
+        await conn.sendMessage(chatId, { text: txt });
+    }
+}

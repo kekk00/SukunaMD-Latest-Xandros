@@ -1,0 +1,36 @@
+// plugin: uptime-bio.js
+import { delay } from '@whiskeysockets/baileys'
+
+let startTime = Date.now()
+
+function formatUptime(ms) {
+  let totalSeconds = Math.floor(ms / 1000)
+  let days = Math.floor(totalSeconds / (24 * 60 * 60))
+  let hours = Math.floor((totalSeconds % (24 * 60 * 60)) / 3600)
+  let minutes = Math.floor((totalSeconds % 3600) / 60)
+  let seconds = totalSeconds % 60
+
+  return `${days} • ${hours.toString().padStart(2, '0')} • ${minutes.toString().padStart(2, '0')} • ${seconds.toString().padStart(2, '0')}`
+}
+
+let handler = async (m, { conn }) => {
+  if (!global.bioLoop) {
+    global.bioLoop = true
+    console.log('[PLUGIN] Loop bio avviato ✅')
+
+    while (true) {
+      try {
+        let uptime = formatUptime(Date.now() - startTime)
+        let newBio = `『 𝐒𝐔𝐊𝐔𝐍𝐀⁶⁶⁶ è attivo da ${uptime} | .𝐦𝐞𝐧𝐮 』`
+
+        await conn.updateProfileStatus(newBio)
+      } catch (e) {
+        console.error('Errore update bio:', e)
+      }
+      await delay(15000) // ogni 15 secondi
+    }
+  }
+}
+
+handler.command = /^startbio$/i
+export default handler
