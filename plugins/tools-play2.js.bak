@@ -1,0 +1,44 @@
+import ytdl from 'ytdl-core';
+import yts from 'yt-search';
+import fs from 'fs';
+import path from 'path';
+
+const handler = async (m, { conn, text, command }) => {
+  if (!text.trim()) return conn.reply(m.chat, '💣 Inserisci il nome del video.', m);
+
+  const search = await yts(text);
+  if (!search.all.length) return m.reply('Nessun risultato trovato.');
+
+  const video = search.all[0];
+  const { title, url, thumbnail } = video;
+  const thumb = (await conn.getFile(thumbnail))?.data;
+
+  conn.sendMessage(m.chat, { text: '_🌐 download in corso..._' }, { quoted: m });
+
+  const filePath = path.join('./tmp', `${Date.now()}.mp4`);
+  const writeStream = fs.createWriteStream(filePath);
+
+  if (command === 'ytmp4' || command === 'play2') {
+    ytdl(url, { quality: 'highestvideo' }).pipe(writeStream);
+  } else if (command === 'play1') {
+    ytdl(url, { filter: 'audioonly', quality: 'highestaudio' }).pipe(writeStream);
+  }
+
+  writeStream.on('finish', async () => {
+    if (command === 'ytmp4' || command === 'play2') {
+      await conn.sendMessage(m.chat, {
+        video: fs.readFileSync(filePath),
+        fileName: `${title}.mp4`,
+        mimetype: 'video/mp4',
+        caption: 'Scaricato con successo!',
+        thumbnail: thumb
+      }, { quoted: m });
+    } else {
+      await conn.sendMessage(m.chat, {
+        audio: fs.readFileSync(filePath),
+        mimetype: 'audio/mpeg'
+      }, { quoted: m });
+    }
+    fs.unlinkSync(filePath); // cancella il file temporaneo
+  });
+};

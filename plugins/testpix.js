@@ -1,0 +1,88 @@
+// plugins/contatti-aesthetic.js
+
+let handler = async (m, { conn }) => {
+    const username = await conn.getName(m.sender);
+
+    const txt = `🌸 Ciao ${username}, ecco le informazioni sui miei owner:
+
+╔═❀˚꒷︶꒷꒥꒷‧₊˚ 𝐨𝐰𝐧𝐞𝐫 ꒷︶꒷꒥꒷‧₊
+║
+╠ ➣ 𝐤𝐞𝐤𝐤𝐨 ᵃᵏᵃ ᵍᶦᵘˢᵉ
+║
+╠ ➣ Numero: +39 329 757 0233
+║
+╚═❀꒷︶꒷꒥꒷‧₊˚꒷︶꒷꒥꒷‧₊˚
+> ᴀʟᴛʀᴇ ɪɴғᴏ ⬇︎`;
+
+    // Pulsanti cta_url
+    const buttons = [
+        {
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({
+                display_text: '『 💻 』 GitHub',
+                url: 'https://github.com/kekko00'
+            })
+        },
+        {
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({
+                display_text: '『 📱 』 WhatsApp',
+                url: 'https://wa.me/393297570233'
+            })
+        },
+        {
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({
+                display_text: '『 📸 』 Instagram',
+                url: 'https://instagram.com/immgiuseetbh'
+            })
+        },
+        {
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({
+                display_text: '『 📧 』 Email',
+                url: 'mailto:prr.gss11@gmail.com'
+            })
+        }
+    ];
+
+    try {
+        // Messaggio contatti aesthetic con pulsanti
+        await conn.sendMessage(m.chat, {
+            image: { url: 'https://i.ibb.co/nMYbqGQ3/Screenshot-20250815-183329-Whats-App.jpg' },
+            caption: txt.trim(),
+            footer: '',
+            interactiveButtons: buttons
+        }, { quoted: m });
+
+        // Messaggio Pix subito dopo
+        await conn.sendMessage(m.chat, {
+            text: 'by Kekko', // credits invisibili
+            interactiveButtons: [
+                {
+                    name: 'payment_info',
+                    buttonParamsJson: JSON.stringify({
+                        payment_settings: [
+                            {
+                                type: 'pix_static_code',
+                                pix_static_code: {
+                                    merchant_name: 'Kekko',
+                                    key: '+393297570233',
+                                    key_type: 'PHONE'
+                                }
+                            }
+                        ]
+                    })
+                }
+            ]
+        }, { quoted: m });
+
+    } catch (e) {
+        console.error('Errore inviando contatti:', e);
+    }
+};
+
+handler.help = ['contatti'];
+handler.tags = ['info'];
+handler.command = /^(owner|proprietario|contatti)$/i;
+export default handler;

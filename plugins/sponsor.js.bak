@@ -1,0 +1,49 @@
+const handler = async (m, { conn }) => {
+  try {
+    // immagine
+    const image = { url: 'https://i.ibb.co/bjXxc4fJ/IMG-20250827-232406.jpg' }
+
+    // testo
+    const caption = "gruppo migliore di zozzap Italia👇👇"
+
+    // link da copiare
+    const link = "https://chat.whatsapp.com/HYrtUF3exig2QjNxULHvgx"
+
+    // bottoni interattivi
+    const interactiveButtons = [
+      {
+        name: "cta_url",
+        buttonParamsJson: JSON.stringify({
+          display_text: "ҒϴᎡᎬᏙᎬᎡ #ᵃⁿᵗᶦᶠʳᵒᶜᶦ ꪶ☠️ꫂ",
+          id: link,
+          url: link
+        })
+      },
+      { name: "cta_copy",
+      buttonParamsJson: JSON.stringify({
+         display_text: "CopiaLink",
+         url: link
+         })
+      }
+  ]
+
+    // messaggio
+    const interactiveMessage = {
+      image,
+      caption,
+      footer: "(foss o dij 🙏)",
+      interactiveButtons
+    }
+
+    await conn.sendMessage(m.chat, interactiveMessage, { quoted: m })
+
+  } catch (e) {
+    console.error(e)
+    await m.reply("❌ Errore durante l'invio del messaggio.")
+  }
+}
+
+handler.command = /^sponsor$/i
+handler.group = true
+
+export default handler

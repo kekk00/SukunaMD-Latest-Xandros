@@ -1,0 +1,37 @@
+// topgruppi.js
+import { db } from './db.js';
+
+let handler = async (m, { conn }) => {
+  let data = db.load();
+  let gruppi = Object.entries(data.gruppi).map(([id, g]) => ({
+    id,
+    membri: g.membri,
+    messaggi: g.messaggi
+  }));
+
+  // ordina per numero di messaggi
+  gruppi.sort((a, b) => b.messaggi - a.messaggi);
+
+  // prendi solo i primi 10
+  let top = gruppi.slice(0, 10);
+
+  let txt = top.map(g =>
+    `» ${g.id}\n${g.messaggi} messaggi | ${g.membri} utenti`
+  ).join('\n\n');
+
+  let button = {
+    buttons: [
+      {
+        buttonId: `.info ${m.sender}`,
+        buttonText: { displayText: ".info profilo" },
+        type: 1
+      }
+    ],
+    headerType: 1
+  };
+
+  await conn.sendMessage(m.chat, { text: txt, ...button }, { quoted: m });
+};
+
+handler.command = /^topgruppi$/i;
+export default handler;
