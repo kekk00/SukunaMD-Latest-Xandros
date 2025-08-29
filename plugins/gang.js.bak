@@ -1,0 +1,156 @@
+const gangRequests = {}; // Inviti in memoria
+const gangData = {}; // Dati delle gang
+
+let handler = async (m, { conn, command, text, usedPrefix }) => {
+    const users = global.db.data.users;
+    const user = users[m.sender];
+
+    switch (command) {
+        case 'creagang':
+            await handleCreateGang(m, user, users, text, usedPrefix, conn);
+            break;
+        case 'invitogang':
+            await handleGangInvite(m, user, users, text, usedPrefix, conn);
+            break;
+        case 'abbandonagang':
+            handleLeaveGang(m, user, users);
+            break;
+        case 'caccialogang':
+            handleKickFromGang(m, user, users);
+            break;
+        case 'infogang':
+            handleGangInfo(m, user, users);
+            break;
+    }
+};
+
+// Creazione gang
+const handleCreateGang = async (m, user, users, text, usedPrefix, conn) => {
+    if (!text) throw `🔫 Usa: ${usedPrefix}creagang <nome> <emoji>`;
+    const [name, emoji] = text.split(' ');
+    if (!name || !emoji) throw '❌ Inserisci nome e emoji!';
+    if (user.gang) throw '🚫 Sei già in una gang!';
+    
+    const gangId = generateGangId();
+    gangData[gangId] = { name, emoji, leader: m.sender, members: [m.sender], createdAt: new Date().toISOString() };
+    user.gang = { id: gangId, role: 'leader' };
+
+    await conn.sendMessage(m.chat, {
+        text: `🎌 Gang creata: *${emoji} ${name} ${emoji}*\n👑 Capo: @${m.sender.split('@')[0]}\nUsa ${usedPrefix}invitogang @utente per invitare membri.`,
+        mentions: [m.sender]
+    });
+};
+
+// Invito gang
+const handleGangInvite = async (m, user, users, text, usedPrefix, conn) => {
+    if (!user.gang) throw '🚫 Non sei in una gang!';
+    if (user.gang.role !== 'leader') throw '🔪 Solo il capo può invitare membri!';
+    
+    const mention = m.mentionedJid?.[0] || m.quoted?.sender;
+    if (!mention) throw `🔫 Tagga un utente con ${usedPrefix}invitogang @utente`;
+    if (mention === m.sender) throw '🤡 Non puoi invitare te stesso!';
+    
+    const target = users[mention];
+    if (!target) throw '🚫 Utente non trovato!';
+    if (target.gang) throw '🚷 Questo utente è già in una gang!';
+    if (gangRequests[mention]) throw '⏳ Invito già inviato!';
+
+    const gangInfo = gangData[user.gang.id];
+    gangRequests[mention] = { from: m.sender, gangId: user.gang.id, timeout: null };
+
+    await conn.sendMessage(m.chat, {
+        text: `🔫 *INVITO GANG*\n\n@${m.sender.split('@')[0]} ti invita nella gang *${gangInfo.emoji} ${gangInfo.name} ${gangInfo.emoji}*.\n💀 Rispondi "accetta" o "rifiuta" entro 60 secondi!`,
+        mentions: [mention, m.sender]
+    });
+
+    gangRequests[mention].timeout = setTimeout(() => {
+        if (gangRequests[mention]) {
+            conn.sendMessage(m.chat, { text: `⌛ Invito per @${mention.split('@')[0]} scaduto.`, mentions: [mention] });
+            delete gangRequests[mention];
+        }
+    }, 60000);
+};
+
+// Gestione messaggi prima del normale handler (accetta/rifiuta)
+handler.before = async (m, { conn }) => {
+    if (!(m.sender in gangRequests)) return;
+    const req = gangRequests[m.sender];
+    clearTimeout(req.timeout);
+
+    const gangInfo = gangData[req.gangId];
+    const inviter = req.from;
+    const users = global.db.data.users;
+
+    if (/^accetta$/i.test(m.text)) {
+        gangInfo.members.push(m.sender);
+        users[m.sender].gang = { id: req.gangId, role: 'member' };
+        await conn.sendMessage(m.chat, {
+            text: `🎊 @${m.sender.split('@')[0]} è entrato nella gang *${gangInfo.emoji} ${gangInfo.name} ${gangInfo.emoji}*! 🔥\nMembri: ${gangInfo.members.length}`,
+            mentions: [m.sender]
+        });
+        delete gangRequests[m.sender];
+    } else if (/^rifiuta$/i.test(m.text)) {
+        await conn.sendMessage(m.chat, {
+            text: `💢 @${m.sender.split('@')[0]} ha rifiutato l'invito.`,
+            mentions: [m.sender]
+        });
+        delete gangRequests[m.sender];
+    }
+};
+
+// Abbandona gang
+const handleLeaveGang = (m, user, users) => {
+    if (!user.gang) throw '🚫 Non sei in nessuna gang!';
+    const gangInfo = gangData[user.gang.id];
+
+    if (user.gang.role === 'leader') {
+        gangInfo.members.forEach(member => { if (users[member]) users[member].gang = null; });
+        delete gangData[user.gang.id];
+        return m.reply(`💥 Gang *${gangInfo.name}* sciolta!`, null, { mentions: [m.sender] });
+    }
+
+    gangInfo.members = gangInfo.members.filter(member => member !== m.sender);
+    user.gang = null;
+    m.reply(`🏳️ Hai lasciato la gang *${gangInfo.name}*`);
+};
+
+// Caccia membro
+const handleKickFromGang = (m, user, users) => {
+    if (!user.gang) throw '🚫 Non sei in nessuna gang!';
+    if (user.gang.role !== 'leader') throw '🔪 Solo il capo può cacciare membri!';
+
+    const mention = m.mentionedJid?.[0] || m.quoted?.sender;
+    if (!mention) throw '🔫 Tagga il membro da cacciare!';
+    if (!gangData[user.gang.id].members.includes(mention)) throw '🚷 Utente non in gang!';
+    
+    gangData[user.gang.id].members = gangData[user.gang.id].members.filter(m => m !== mention);
+    if (users[mention]) users[mention].gang = null;
+
+    m.reply(`🔪 @${mention.split('@')[0]} cacciato dalla gang!`, null, { mentions: [mention] });
+};
+
+// Info gang
+const handleGangInfo = (m, user, users) => {
+    if (!user.gang) throw '🚫 Non sei in nessuna gang!';
+    const gangInfo = gangData[user.gang.id];
+
+    const membersList = gangInfo.members.map(member => {
+        const role = member === gangInfo.leader ? '👑 Capo' : '💀 Soldato';
+        return `• @${member.split('@')[0]} (${role})`;
+    }).join('\n');
+
+    m.reply(`🔫 *INFO GANG*\n*${gangInfo.emoji} ${gangInfo.name} ${gangInfo.emoji}*\n👥 Membri (${gangInfo.members.length}):\n${membersList}`, null, { mentions: gangInfo.members });
+};
+
+function generateGangId() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
+
+handler.command = ['creagang','invitogang','abbandonagang','caccialogang','infogang'];
+handler.help = [
+    'creagang <nome> <emoji> - Crea una nuova gang',
+    'invitogang @utente - Invita un utente',
+    'abbandonagang - Lascia la tua gang',
+    'caccialogang @utente - Caccia un membro (solo capo)',
+    'infogang - Mostra info sulla tua gang'
+];
+
+export default handler;

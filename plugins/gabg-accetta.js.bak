@@ -1,0 +1,25 @@
+let handler = async (m, { conn }) => {
+    const gangData = global.db.data.gang = global.db.data.gang || {};
+    const gangRequests = global.db.data.gangRequests = global.db.data.gangRequests || {};
+    const users = global.db.data.users;
+
+    const req = gangRequests[m.sender];
+    if (!req) return;
+
+    clearTimeout(req.timeout);
+    const g = gangData[req.gangId];
+    g.members.push(m.sender);
+    users[m.sender].gang = { id: req.gangId, role: 'member' };
+
+    await conn.sendMessage(m.chat, {
+        text: `🎊 @${m.sender.split('@')[0]} è entrato nella gang *${g.emoji} ${g.name} ${g.emoji}*! Ora ci sono ${g.members.length} membri.`,
+        mentions: [m.sender]
+    });
+
+    delete gangRequests[m.sender];
+};
+
+handler.help = ['accetta'];
+handler.tags = ['gang'];
+handler.command = ['accetta'];
+export default handler;

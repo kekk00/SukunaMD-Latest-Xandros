@@ -1,0 +1,22 @@
+let handler = async (m) => {
+    const users = global.db.data.users;
+    const gangData = global.db.data.gang = global.db.data.gang || {};
+    const user = users[m.sender];
+
+    if (!user.gang) return m.reply('『 ⚠️ 』Non fai parte di nessuna gang.');
+
+    const gangId = user.gang.id;
+    const gang = gangData[gangId];
+
+    if (user.gang.role === 'boss') return m.reply('『 ⚠️ 』Sei il boss della gang. Usa il comando .sciogli per sciogliere la gang.');
+
+    gang.members = gang.members.filter(jid => jid !== m.sender);
+    delete users[m.sender].gang;
+
+    m.reply(`『 👋 』Hai lasciato la gang *${gang.emoji} ${gang.name} ${gang.emoji}*.`);
+};
+
+handler.help = ['lasciagang'];
+handler.tags = ['gang'];
+handler.command = ['lasciagang'];
+export default handler;

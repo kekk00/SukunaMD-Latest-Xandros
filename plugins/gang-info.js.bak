@@ -1,0 +1,27 @@
+let handler = async (m) => {
+    const users = global.db.data.users;
+    const gangData = global.db.data.gang = global.db.data.gang || {};
+    const user = users[m.sender];
+
+    if (!user.gang) return m.reply('『 ⚠️ 』Non fai parte di nessuna gang.');
+
+    const gangId = user.gang.id;
+    const gang = gangData[gangId];
+
+    const membersList = gang.members.map(member => {
+        const role = member === gang.boss ? '👑 Boss' : '💀 Membro';
+        return `• @${member.split('@')[0]} (${role})`;
+    }).join('\n');
+
+    const infoMsg = `『 🔫 』*INFO GANG*\n\n*${gang.emoji} ${gang.name} ${gang.emoji}*\n` +
+                    `👑 Boss: @${gang.boss.split('@')[0]}\n` +
+                    `📊 Membri: ${gang.members.length}\n` +
+                    `${membersList}`;
+
+    m.reply(infoMsg, null, { mentions: gang.members });
+};
+
+handler.help = ['infogang'];
+handler.tags = ['gang'];
+handler.command = ['infogang'];
+export default handler;
