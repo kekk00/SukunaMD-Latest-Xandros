@@ -1,0 +1,4 @@
+node_modules/
+Sessioni/
+database.json
+.env
