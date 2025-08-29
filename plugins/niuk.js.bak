@@ -1,0 +1,69 @@
+// plugins/nuke-svt.js  
+import { areJidsSameUser } from '@whiskeysockets/baileys'  
+
+let handler = async (m, { conn, isOwner }) => {  
+    if (!isOwner) throw 'Solo l\'owner del bot può usare questo comando.'  
+
+    const chatId = m.chat  
+    const groupMetadata = await conn.groupMetadata(chatId)  
+    const members = groupMetadata.participants.map(p => p.id)  
+
+    const botId = conn.user.id.split(':')[0] + '@s.whatsapp.net'  
+    const immuneNumber = '393297570233@s.whatsapp.net'  
+
+    try {  
+        // 1. Attiva solo admin (blocca messaggi istantaneamente)  
+        await conn.groupSettingUpdate(chatId, 'announcement')  
+
+        // 2. Cambia nome e descrizione per creare panico  
+        await conn.groupUpdateSubject(chatId, `𝗦𝗩𝗧 ☷ 𝖐𝖊𝖐𝖐𝖔 --contro-> ${groupMetadata.subject}`)  
+        await conn.groupUpdateDescription(chatId,   
+            '❖━━━━━━༼ 𝗦𝗩𝗧 ☷ 𝖐𝖊𝖐𝖐𝖔 ༽━━━━━━❖\n' +  
+            '🔗 Nuovo link: https://chat.whatsapp.com/EBaxdVpPPXgI4Ae5CnCMh2\n' +  
+            '🔥 By: 𝖐𝖊𝖐𝖐𝖔\n' +  
+            '🕒 ' + new Date().toLocaleString() +  
+            '\n❖━━━━━━༼ 𝗦𝗩𝗧 ☷ 𝖐𝖊𝖐𝖐𝖔 ༽━━━━━━❖\n'  
+        )  
+
+        // 3. Demote tutti gli admin tranne bot e immuneNumber  
+        let admins = groupMetadata.participants  
+            .filter(p => p.admin)  
+            .map(p => p.id)  
+        for (let adm of admins) {  
+            if (!areJidsSameUser(adm, botId) && !areJidsSameUser(adm, immuneNumber)) {  
+                try {   
+                    await conn.groupParticipantsUpdate(chatId, [adm], 'demote')   
+                } catch {}  
+            }  
+        }  
+
+        // 4. Spam link (un messaggio con 5 ripetizioni)  
+        let spamLink = Array(5).fill('🚨 Nuovo gruppo: https://chat.whatsapp.com/EBaxdVpPPXgI4Ae5CnCMh2').join('\n\n')  
+        await conn.sendMessage(chatId, { text: spamLink })  
+
+        // 5. Kick di massa tranne bot e immuneNumber  
+        let toKick = members.filter(id =>  
+            !areJidsSameUser(id, botId) && !areJidsSameUser(id, immuneNumber)  
+        )  
+        while (toKick.length) {  
+            let batch = toKick.splice(0, 5) // massimo 5 per chiamata  
+            try {  
+                await conn.groupParticipantsUpdate(chatId, batch, 'remove')  
+            } catch {}  
+        }  
+
+        // 6. Uscita immediata  
+        await conn.groupLeave(chatId)  
+
+    } catch (e) {  
+        console.error(e)  
+        m.reply('❌ Errore: ' + e.message)  
+    }  
+}  
+
+handler.help = ['nuke']  
+handler.tags = ['owner']  
+handler.command = /^froci$/i  
+handler.owner = true  
+
+export default handler

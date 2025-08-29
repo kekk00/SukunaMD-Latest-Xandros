@@ -1,0 +1,36 @@
+let handler = async (m, { conn, args, text, usedPrefix, command }) => {
+    // Recupera l'utente dal mention, messaggio quotato o numero testuale
+    const number = m.mentionedJid?.[0] 
+        || m.quoted?.sender 
+        || text?.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+
+    if (!number) return conn.reply(m.chat, `Uso corretto: ${usedPrefix + command} @numero`, m);
+
+    // Assicurati che l'utente esista nel DB
+    if (!global.db.data.users[number]) global.db.data.users[number] = {};
+
+    let user = global.db.data.users[number];
+
+    switch(command) {
+        case 'addprem':
+            if (user.premium) {
+                conn.reply(m.chat, `⚠️ L'utente ${number.split('@')[0]} è già premium.`, m);
+            } else {
+                user.premium = true;
+                conn.reply(m.chat, `✅ L'utente ${number.split('@')[0]} è diventato premium.`, m);
+            }
+            break;
+        case 'delprem':
+            if (!user.premium) {
+                conn.reply(m.chat, `⚠️ L'utente ${number.split('@')[0]} non è premium.`, m);
+            } else {
+                user.premium = false;
+                conn.reply(m.chat, `✅ L'utente ${number.split('@')[0]} non è più premium.`, m);
+            }
+            break;
+    }
+};
+
+handler.command = /^(addprem|delprem)$/i;
+handler.rowner = true;
+export default handler;

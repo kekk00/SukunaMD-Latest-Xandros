@@ -1,0 +1,20 @@
+import fetch from 'node-fetch';
+
+let handler = async (m, { conn }) => {
+  const start = performance.now();
+  const end = performance.now();
+  const speed = (end - start).toFixed(2);
+  const latency = Date.now() - start;
+
+
+  const textMsg = `⚡️${speed}ms\n> 𝐒𝐔𝐊𝐔𝐍𝐀⁶⁶⁶-𝐁𝐨𝐭`.trim();
+
+  await conn.sendMessage(m.chat, {
+    text: textMsg,
+  }, { quoted: m });
+};
+
+handler.command = ['pong'];
+handler.register = true;
+
+export default handler;
